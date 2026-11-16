@@ -54,3 +54,7 @@ Status: implementation complete; real-data GPU verification deferred by user aft
 本次仅修改train_few_shot.py及相关说明文档。相比上一交付，训练协议唯一新增变化是上述经用户明确批准的早停。全部真实数据集成测试仍待执行；本次没有训练、提交、建仓或推送。临时测试脚本和日志按精确路径删除，保留源码差异及结构化审计证据。
 
 Upload amendment: latest user instruction authorizes committing and publishing the current implementation snapshot before deferred real-data tests; preserve their pending status and all source-isolation requirements.
+
+## 2026-11-16 FM系数更新
+
+按用户新指示，当前PriorConfig默认weight与configs/hyperV4_otfm.json的weight均由0.02改为0.005。上文0.02为历史实施/验证时的初始设置。OT-FM默认仍关闭，正式V4配置仍开启；原KL、encoder penalty系数、学习率、早停和其他模型逻辑均不变。不改写已有checkpoint中的历史元数据；本次未启动训练。

@@ -7,7 +7,7 @@ import math
 @dataclass(frozen=True)
 class PriorConfig:
     enabled: bool = False
-    weight: float = 0.02
+    weight: float = 0.005
 
     def __post_init__(self):
         if type(self.enabled) is not bool:

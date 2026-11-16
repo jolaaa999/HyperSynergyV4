@@ -4,7 +4,7 @@
 
 **这是代码实现快照，尚未完成真实数据集成验证，也没有性能提升结论。** 已完成的单元测试和待补测项目见 [实现说明](docs/OTFM.md) 与 [审计记录](docs/OTFM_AUDIT.md)。用户在明确知悉待补测状态后要求上传本版本。
 
-OT-FM 默认关闭；V4实验配置为 configs/hyperV4_otfm.json（enabled=true，weight=0.02；仅初始值）。本次未进行正式训练，仓库不包含运行日志、checkpoint或账号凭据。
+OT-FM 默认关闭；V4实验配置为 configs/hyperV4_otfm.json（enabled=true，weight=0.005；仅初始值）。本次未进行正式训练，仓库不包含运行日志、checkpoint或账号凭据。
 
 保留原 HyperSynergy Git 历史。下面为原项目说明。
 

@@ -21,9 +21,9 @@ Stage2 的 model_few.HyperSynergy.run_batch 在原 Query 预测及原损失计�
 
 正式 V4 配置 configs/hyperV4_otfm.json：
 - enabled: true
-- weight: 0.02
+- weight: 0.005
 
-0.02 仅是初始实验值，尚未证明最优；没有更改任何原损失系数或实验超参数。配置使用 JSON，避免添加 YAML 依赖。
+0.005 仅是初始实验值，尚未证明最优；没有更改任何原损失系数或实验超参数。配置使用 JSON，避免添加 YAML 依赖。
 
 Stage2 原入口新增 --prior-config 参数，例如：
     python -B train_few_shot.py --prior-config configs/hyperV4_otfm.json

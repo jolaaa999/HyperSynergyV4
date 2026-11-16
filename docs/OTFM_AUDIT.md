@@ -129,3 +129,7 @@ REMOTE PUSH: BLOCKED（依原门槛，全部测试通过前不提交、不建仓
 ## 最新上传授权
 
 用户在明确获知真实数据测试尚未完成、代码尚未上传后，最新指示“上传远程仓库”。按该新指示提交当前源码快照至 jolaaa999/HyperSynergyV4 的 feature/hyperV4-otfm 分支，保留全部待验证说明；未运行正式训练，未将待验证项标记为通过。README仅增加版本说明，原README正文保留。
+
+## 2026-11-16 FM系数更新
+
+按用户新指示，当前PriorConfig默认weight与configs/hyperV4_otfm.json的weight均由0.02改为0.005。上文0.02为历史实施/验证时的初始设置。OT-FM默认仍关闭，正式V4配置仍开启；原KL、encoder penalty系数、学习率、早停和其他模型逻辑均不变。不改写已有checkpoint中的历史元数据；本次未启动训练。
