@@ -9,6 +9,9 @@ import warnings
 from utils_syn import *
 #from tensorboardX import SummaryWriter
 import pickle
+import argparse
+from prior_config import load_prior_config
+from otfm_checkpoint import checkpoint_payload
 
 from model_few import *
 import data_syn
@@ -19,6 +22,9 @@ warnings.filterwarnings('ignore')
 def train(train_batches, data_train, model, optimizer, optimizer_lr, lr_scheduler, device):
     best_loss = 1000
     best_r2 = 0
+    early_stopping_patience = 5
+    best_early_stopping_loss = float("inf")
+    validations_without_improvement = 0
 
     total_preds_train = torch.Tensor().to(device)
     total_labels_train = torch.Tensor().to(device)
@@ -58,6 +64,9 @@ def train(train_batches, data_train, model, optimizer, optimizer_lr, lr_schedule
                         model.run_batch(data, data1, batch_size)
                     print('(Meta-Valid) [Step: %d/%d] KL: %4.4f Encoder Penalty: %4.4f query_loss: %4.4f' % (
                         step, train_batches, kl_div, encoder_penalty, query_loss))
+                    if model.last_fm_loss is not None:
+                        print("OT-FM loss:", model.last_fm_loss.item(),
+                              "weight:", model.prior_config.weight)
                     all_loss.backward()
                     train_loss.append(all_loss.item())
                     total_preds_train = torch.cat((total_preds_train, query_output), 0)
@@ -143,16 +152,23 @@ def train(train_batches, data_train, model, optimizer, optimizer_lr, lr_schedule
             total_c_pearson = pearson(total_labels, total_preds)
             total_c_r2 = r2_score(total_labels, total_preds)
 
+            # Early stopping tracks historical validation LOSS independently of checkpoint selection.
+            if LOSS < best_early_stopping_loss:
+                best_early_stopping_loss = LOSS
+                validations_without_improvement = 0
+            else:
+                validations_without_improvement += 1
+
             # save checkpoint
             if LOSS < best_loss or total_c_r2 > best_r2:
                 best_loss = LOSS
                 best_r2 = total_c_r2
                 model_name = '%dk_%4.4f_model' % (step, sum(val_losses) / len(val_losses))
                 # defined model name
-                state = {'step': step, 'state_dict': model.state_dict()}
-                if not os.path.exists('saved_model/saved_model_few_shot_setting/'):
-                    os.makedirs('saved_model/saved_model_few_shot_setting/', exist_ok=False)
-                save_path = "saved_model/saved_model_few_shot_setting/{}_{}.pth".format(model_name, step)
+                state = checkpoint_payload(model, step, optimizer, optimizer_lr, lr_scheduler)
+                if not os.path.exists('saved_model/saved_model_few_shot_setting_change_encoders/'):
+                    os.makedirs('saved_model/saved_model_few_shot_setting_change_encoders/', exist_ok=False)
+                save_path = "saved_model/saved_model_few_shot_setting_change_encoders/{}_{}.pth".format(model_name, step)
                 torch.save(state, save_path)
 
             model.train()
@@ -167,7 +183,20 @@ def train(train_batches, data_train, model, optimizer, optimizer_lr, lr_schedule
             save_statistics(experiment_nameTE, [step, total_c_loss, total_c_rmse, total_c_spearman,
                                                 total_c_pearson, total_c_r2])
 
+            print("Early stopping patience: {}/{} validations without improvement".format(
+                validations_without_improvement, early_stopping_patience))
+            if validations_without_improvement >= early_stopping_patience:
+                print("Early stopping at step {}: no validation LOSS improvement for {} consecutive validations".format(
+                    step, early_stopping_patience))
+                break
+
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--prior-config', default=None,
+                        help='Optional OT-FM JSON config; default disables OT-FM')
+    args = parser.parse_args()
+    prior_config = load_prior_config(args.prior_config)
+
 
     # writer = SummaryWriter('./Result_ful_syn_rest')
 
@@ -208,19 +237,25 @@ if __name__ == '__main__':
 
     print(device)
     mini = data_syn.MiniCellDataSet(batch_size=batch_size, samples_support=samples_support, samples_query=samples_query)
-    HyperSynergy_model = HyperSynergy(num_support = samples_support, num_query=samples_query).to(device)
+    HyperSynergy_model = HyperSynergy(num_support = samples_support, num_query=samples_query, prior_config=prior_config).to(device)
 
-    model_path = './pretrain_representation_model/pretrain_representation_few_zero_setting.model'
+    model_path = './pretrain_representation_model/pretrain_representation_few_zero_setting_change_encoders.model'
 
+    # pretrained_dict = torch.load(model_path, map_location=device)
+    # # read MMN's params
+    # model_dict = HyperSynergy_model.extractor.state_dict()
+    # # read same params in two model
+    # state_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict.keys()}
+    # # updata ,
+    # model_dict.update(state_dict)
+    # # load part of model params
+    # HyperSynergy_model.extractor.load_state_dict(model_dict)
+    #   ----------整体替换了----------
     pretrained_dict = torch.load(model_path, map_location=device)
-    # read MMN's params
-    model_dict = HyperSynergy_model.extractor.state_dict()
-    # read same params in two model
-    state_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict.keys()}
-    # updata ,
-    model_dict.update(state_dict)
-    # load part of model params
-    HyperSynergy_model.extractor.load_state_dict(model_dict)
+    HyperSynergy_model.extractor.load_state_dict(
+        pretrained_dict,
+        strict=True,
+    )
     # freeze
     for p in HyperSynergy_model.extractor.parameters():
 

@@ -12,6 +12,7 @@ import warnings
 from utils_syn import *
 from tensorboardX import SummaryWriter
 import pickle
+from otfm_checkpoint import load_checkpoint
 import random
 torch.set_num_threads(int(2))
 warnings.filterwarnings('ignore')
@@ -23,8 +24,8 @@ def test(total_test_batches, data_test, model, device,best_step,best_MSE,saved_m
     # load state dict
 
     _load_model =saved_model +str(best_step)+'k_'+str(best_MSE)+'_model_'+str(best_step)+'.pth'
-    state_dict = torch.load(_load_model)['state_dict']
-    model.load_state_dict(state_dict)
+    checkpoint = torch.load(_load_model)
+    load_checkpoint(model, checkpoint)
     model.eval()
     total_c_spearman = 0
     total_c_loss = 0
@@ -116,7 +117,7 @@ if __name__ == '__main__':
     samples_support = 5 #10,30
     samples_query = 40
     total_test_batches = 200
-    saved_model_path='saved_model/saved_model_few_shot_setting/'
+    saved_model_path='saved_model/saved_model_few_shot_setting_change_encoders/'
 
     result_path = 'results/result_few_shot/'
 
@@ -145,17 +146,23 @@ if __name__ == '__main__':
     mini = data_syn.MiniCellDataSet(batch_size=batch_size, samples_support=samples_support, samples_query=samples_query)
     HyperSynergy_model = HyperSynergy(num_support = samples_support, num_query=samples_query).to(device)
 
-    model_path = './pretrain_representation_model/pretrain_representation_few_zero_setting.model'
+    model_path = './pretrain_representation_model/pretrain_representation_few_zero_setting_change_encoders.model'
 
+    # pretrained_dict = torch.load(model_path, map_location=device)
+    # # read MMN's params
+    # model_dict = HyperSynergy_model.extractor.state_dict()
+    # # read same params in two model
+    # state_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict.keys()}
+    # # updata ,
+    # model_dict.update(state_dict)
+    # # load part of model params
+    # HyperSynergy_model.extractor.load_state_dict(model_dict)
+    #----------整体替换了----------
     pretrained_dict = torch.load(model_path, map_location=device)
-    # read MMN's params
-    model_dict = HyperSynergy_model.extractor.state_dict()
-    # read same params in two model
-    state_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict.keys()}
-    # updata ,
-    model_dict.update(state_dict)
-    # load part of model params
-    HyperSynergy_model.extractor.load_state_dict(model_dict)
+    HyperSynergy_model.extractor.load_state_dict(
+        pretrained_dict,
+        strict=True,
+    )
     # freeze
     for p in HyperSynergy_model.extractor.parameters():
         # print(p)
